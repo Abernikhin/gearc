@@ -21,11 +21,26 @@ class parser:
         self.free = 0
 
     def __call__(self):
+        self.tokens = self.parent(self.tokens)
         while len(self.tokens) > 0:
             self.result.append(self.rout_m(self.tokens))
             for i in range(self.free):
                 self.tokens.pop(0)
         return self.result
+
+
+    def enum(self, tokens):
+        if len(tokens) == 1:
+            return node(tokens[0])
+        return node(token("name", "enum"))
+
+    def type(self, tokens):
+        if len(tokens) == 1:
+            return node(tokens[0])
+        return node(token("name", "type"))
+
+
+
 
     def rout_m(self, tokens):
         if tokens[0] != "private" and tokens[0] != "public":
@@ -33,25 +48,28 @@ class parser:
         mod = tokens[0]
         tokens.pop(0)
         root = node(mod, self.rout(tokens))
+        self.free += 1
         return root
-
+    
     def rout(self, tokens):
-        tokens = self.parent(tokens)
         if tokens[0] == "struct":
-            self.free += 4
-            root = node(tokens[0])
-            tokens.pop(0)
-            if type(tokens[0]) != token:
+            if type(tokens[1]) == vector:
+                raise SyntaxError("cant find name in struct")
+            if tokens[1].type != "name":
+                raise SyntaxError("wrong expresion: struct %s"%tokens[1].value)
+            if type(tokens[2]) != vector:
                 raise SyntaxError("wrong struct construction")
-            if tokens[0].type != "name":
-                raise SyntaxError("wrong struct construction: struct %s"%tokens[0].value)
-            root.append(node(token("name", "name"), node(tokens[0])))
-            tokens.pop(0)
-            if type(tokens[0]) != vector:
-                raise SyntaxError("wrong struct construction: cant find {}")
-            if tokens[0].sig != 0:
-                raise SyntaxError("wrong struct construction: cant find {}")
-            root.append(self.struct(tokens[0].e))
+            if tokens[2].sig != 0:
+                raise SyntaxError("cant find {}")
+            root = node(
+                tokens[0],
+                node(
+                    token("name", "name"),
+                    node(tokens[1])
+                    ),
+                self.struct(tokens[2].e)
+                )
+            self.free += 3
             return root
 
 
@@ -66,10 +84,8 @@ class parser:
                 continue
             buf.append(i)
         
-        breakpoint()
         for i in obj:
             buffer = []
-            self.free += len(i) + 1
             for f in i.copy():
                 if f == ':':
                     break
@@ -79,6 +95,7 @@ class parser:
             root.append(node(token("colon", ':'), self.enum(buffer), self.type(i)))
 
         return root
+
 
 
     def enum(self, tokens):
@@ -122,3 +139,4 @@ class parser:
             result.append(i)
             index += 1
         return result
+    
