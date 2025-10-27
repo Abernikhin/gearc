@@ -8,7 +8,7 @@ class node:
         self.value = value.value
         for i in child:
             if type(i) != node:
-                raise TypeError("node child has wrong type")
+                raise TypeError("node child has wrong type %s"%type(i))
         self.child = list(child)
     
     def append(self, value):
@@ -28,6 +28,6 @@ class node:
         return True if self.value != value else False
 
     def info(self, c=0):
-        print("\t"*c+"|> "+self.value)
+        print("    "*c+"|> "+self.value)
         for i in self.child:
             i.info(c+1)
