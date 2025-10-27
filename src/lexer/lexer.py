@@ -12,6 +12,7 @@ class lexer():
             "ignore": r"//([.\\ ]*)",
             "number": r"([123456789]\d+)",
             "name": r"([\w\_]+[\d\w\_]*)",
+            "addres": r"(\&)",
             "begin": r"(\{)",
             "end": r"(\})",
             "colon": r"(\:)",

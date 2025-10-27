@@ -107,8 +107,11 @@ class parser:
         return node(token("name", "enum"))
 
     def type(self, tokens):
-        if len(tokens) == 1:
+        if len(tokens) == 1 and tokens[0].type == "name":
             return node(tokens[0])
+        if len(tokens) == 2 and tokens[1].type == "name":
+            if tokens[0] == '&':
+                return node(tokens[0], node(tokens[1]))
         return node(token("name", "type"))
 
 
