@@ -55,7 +55,6 @@ class parser:
     
     def rout(self, tokens):
         if tokens[0] == "struct":
-            breakpoint()
             if type(tokens[1]) == vector:
                 raise SyntaxError("cant find name in struct")
             if tokens[1].type != "name":
@@ -73,6 +72,21 @@ class parser:
                 self.struct(tokens[2].e)
                 )
             self.free += 3
+            return root
+
+        if tokens[0] == "var":
+            name = node(tokens[1])
+            if tokens[2] != ':':
+                raise SyntaxError("wrong var expresion: cant find :")
+            buf = []
+            for i in range(3, len(tokens)):
+                if tokens[i] == ';':
+                    break
+                buf.append(tokens[i])
+            self.free += len(buf) + 4
+            root = node(tokens[0])
+            root.append(node(token("name", "name"), name))
+            root.append(node(token("name", "type"), self.type(buf)))
             return root
 
 
@@ -98,8 +112,6 @@ class parser:
             root.append(node(token("colon", ':'), self.enum(buffer), self.type(i)))
 
         return root
-
-
 
     def enum(self, tokens):
         if len(tokens) == 1:
