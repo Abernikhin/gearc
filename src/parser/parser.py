@@ -26,6 +26,8 @@ class parser:
             self.result.append(self.rout_m(self.tokens))
             for i in range(self.free):
                 self.tokens.pop(0)
+
+            self.free = 0
         return self.result
 
 
@@ -53,6 +55,7 @@ class parser:
     
     def rout(self, tokens):
         if tokens[0] == "struct":
+            breakpoint()
             if type(tokens[1]) == vector:
                 raise SyntaxError("cant find name in struct")
             if tokens[1].type != "name":

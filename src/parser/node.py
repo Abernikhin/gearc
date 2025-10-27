@@ -8,7 +8,7 @@ class node:
         self.value = value.value
         for i in child:
             if type(i) != node:
-                raise TypeError("node child has wrong type %s"%type(i))
+                raise TypeError(f"node child has wrong type {type(i)}")
         self.child = list(child)
     
     def append(self, value):
