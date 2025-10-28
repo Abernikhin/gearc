@@ -88,6 +88,40 @@ class parser:
             root.append(node(token("name", "name"), name))
             root.append(node(token("name", "type"), self.type(buf)))
             return root
+    
+        if tokens[0] == "def":
+            name = node(token("name", "name"), node(tokens[1]))
+            args = node(token("name", "args"))
+            type_buffer = []
+            impl = None
+            for i in range(5, len(tokens)):
+                if type(tokens[i]) == vector:
+                    impl = self.function(tokens[i].e)
+                    break
+                type_buffer.append(tokens[i])
+            _type = node(token("name", "type"), self.type(type_buffer))
+            self.free += 6 + len(type_buffer)
+            return node(tokens[0], name, args, _type, impl)
+        
+    
+    def function(self, tokens):
+        root = node(token("name", "impl"))
+        obj = []
+        buf = []
+        for i in tokens:
+            if i == ';':
+                obj.append(buf)
+                buf = []
+                continue
+            buf.append(i)
+        
+        index = 0
+        for i in obj:
+            index += 1
+        
+        return root
+            
+
 
 
     def struct(self, tokens):
@@ -114,9 +148,21 @@ class parser:
         return root
 
     def enum(self, tokens):
+        for i in tokens:
+            if type(i) != token:
+                raise SyntaxError("wrong enum")
+            if i.type != 'comma' and i.type != "name":
+                raise SyntaxError("wrong enum 2")
         if len(tokens) == 1:
             return node(tokens[0])
-        return node(token("name", "enum"))
+        if len(tokens) %2 == 0 and tokens[len(tokens)-1] == ',':
+            tokens.pop()
+        root = node(token("name", "enum"))
+        for i in tokens:
+            if i.type == "name":
+                root.append(node(i))
+
+        return root
 
     def type(self, tokens):
         if len(tokens) == 1 and tokens[0].type == "name":

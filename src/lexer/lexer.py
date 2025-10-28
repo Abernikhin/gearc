@@ -15,6 +15,9 @@ class lexer():
             "addres": r"(\&)",
             "begin": r"(\{)",
             "end": r"(\})",
+            "right": r"(\))",
+            "left": r"(\()",
+            "arrow": r"(->)",
             "colon": r"(\:)",
             "comma": r"(\,)",
             "semicolon": r"(\;)"
