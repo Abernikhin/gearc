@@ -1,24 +1,30 @@
 from parser.node import*
 
+
 class vector:
     def __init__(self, sig):
         self.sig = sig
         self.e = []
-    
+
+
     def append(self, obj):
         self.e.append(obj)
-    
+
+
     def pop(self, index):
         self.e.pop(index)
-    
+
+
     def __getitem__(self, index):
         return self.e[index]
-    
+
+
 class parser:
     def __init__(self, tokens) -> None:
         self.tokens = tokens
         self.result = []
         self.free = 0
+
 
     def __call__(self):
         self.tokens = self.parent(self.tokens)
@@ -36,12 +42,11 @@ class parser:
             return node(tokens[0])
         return node(token("name", "enum"))
 
+
     def type(self, tokens):
         if len(tokens) == 1:
             return node(tokens[0])
         return node(token("name", "type"))
-
-
 
 
     def rout_m(self, tokens):
@@ -53,6 +58,7 @@ class parser:
         self.free += 1
         return root
     
+
     def rout(self, tokens):
         if tokens[0] == "struct":
             if type(tokens[1]) == vector:
@@ -103,25 +109,36 @@ class parser:
             self.free += 6 + len(type_buffer)
             return node(tokens[0], name, args, _type, impl)
         
+        if tokens[0] == "using":
+            pass
+        
     
     def function(self, tokens):
         root = node(token("name", "impl"))
         obj = []
         buf = []
+        tokens = self.parent(tokens)
         for i in tokens:
             if i == ';':
                 obj.append(buf)
                 buf = []
                 continue
             buf.append(i)
+        if len(buf) != 0:
+            obj.append(buf)
         
         index = 0
         for i in obj:
+            if i[0] == "return":
+                i.pop(0)
+                root.append(node(token("name", "return"), self.expr(i)))
+                break
+            elif len(obj)-1 == index:
+                root.append(node(token("name", "return"), self.expr(i)))
+                break
             index += 1
         
         return root
-            
-
 
 
     def struct(self, tokens):
@@ -164,6 +181,7 @@ class parser:
 
         return root
 
+
     def type(self, tokens):
         if len(tokens) == 1 and tokens[0].type == "name":
             return node(tokens[0])
@@ -171,7 +189,6 @@ class parser:
             if tokens[0] == '&':
                 return node(tokens[0], node(tokens[1]))
         return node(token("name", "type"))
-
 
 
     def parent(self, tokens):
@@ -203,4 +220,39 @@ class parser:
             result.append(i)
             index += 1
         return result
-    
+
+
+    def expr(self, tokens):
+        return self.factor(tokens)
+
+    def factor(self, tokens):
+        if len(tokens) == 1:
+            if tokens[0].type == "number":
+                return node(tokens[0])
+            if tokens[0].type == "name":
+                return node(tokens[0])
+
+        if len(tokens) == 2:
+            if tokens[0].type == "name":
+                if type(tokens[1]) == vector:
+                    if tokens[1].sig == 0:
+                        pass
+                    if tokens[1].sig == 1:
+                        root = node(token("name", "call()"))
+                        name = node(tokens[0])
+                        buffer = []
+                        obj = []
+                        for i in tokens[1].e:
+                            if i == ',':
+                                obj.append(buffer)
+                                buf = []
+                                continue
+                            buf.append(i)
+                        if len(buffer) != 0:
+                            obj.append(buffer)
+                        
+                        for i in obj:
+                            name.append(self.expr(i))
+                        
+                        root.append(name)
+                        return root
