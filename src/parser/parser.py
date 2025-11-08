@@ -50,13 +50,7 @@ class parser:
 
 
     def rout_m(self, tokens):
-        if tokens[0] != "private" and tokens[0] != "public":
-            return node(token("name", "private"), self.rout(tokens))
-        mod = tokens[0]
-        tokens.pop(0)
-        root = node(mod, self.rout(tokens))
-        self.free += 1
-        return root
+        return node(token("name", "private"), self.rout(tokens))
     
 
     def rout(self, tokens):
@@ -80,7 +74,7 @@ class parser:
             self.free += 3
             return root
 
-        if tokens[0] == "var":
+        if tokens[0] == "let":
             name = node(tokens[1])
             if tokens[2] != ':':
                 raise SyntaxError("wrong var expresion: cant find :")
@@ -96,24 +90,28 @@ class parser:
             return root
     
         if tokens[0] == "def":
+            breakpoint()
             name = node(token("name", "name"), node(tokens[1]))
-            args = node(token("name", "args"))
+            _args = node(token("name", "args"))
             type_buffer = []
             impl = None
-            for i in range(5, len(tokens)):
+            for i in range(4, len(tokens)):
                 if type(tokens[i]) == vector:
-                    impl = self.function(tokens[i].e)
+                    impl = self.function(tokens[i].e, tokens[5])
                     break
                 type_buffer.append(tokens[i])
             _type = node(token("name", "type"), self.type(type_buffer))
-            self.free += 6 + len(type_buffer)
-            return node(tokens[0], name, args, _type, impl)
+            self.free += 5 + len(type_buffer)
+            return node(tokens[0], name, _args, _type, impl)
         
         if tokens[0] == "using":
             pass
+
+        else:
+            raise SyntaxError(f"wrong global expression: {tokens[0].value}")
         
     
-    def function(self, tokens):
+    def function(self, tokens, t):
         root = node(token("name", "impl"))
         obj = []
         buf = []
@@ -133,9 +131,11 @@ class parser:
                 i.pop(0)
                 root.append(node(token("name", "return"), self.expr(i)))
                 break
-            elif len(obj)-1 == index:
+            elif len(obj)-1 == index and t != 'void':
                 root.append(node(token("name", "return"), self.expr(i)))
                 break
+            else:
+                root.append(self.factor(i))
             index += 1
         
         return root
@@ -193,32 +193,63 @@ class parser:
 
     def parent(self, tokens):
         result = []
-        buf    = vector(0)
-        index  = 0
-        c      = 0
+
+        index = 0
         while index < len(tokens):
             i = tokens[index]
             if i == '{':
-                if c != 0:
-                    buf.append(i)
-                c += 1
+                buffer = vector(0)
                 index += 1
-                continue
-            if i == '}':
-                c -= 1
+                c = 0
+                while True:
+                    i = tokens[index]
+                    if i == '{':
+                        buffer.append(i)
+                        c += 1
+                        continue
+                    if i == '}':
+                        if c != 0:
+                            buffer.append(i)
+                            c -= 1
+                            index += 1
+                            continue
+                        break
+                    
+                    buffer.append(i)
+                    index += 1
                 index += 1
-                if c != 0:
-                    buf.append(i)
-                if c == 0:
-                    result.append(buf)
-                    buf = vector(0)
+                buffer.e = self.parent(buffer.e)
+                result.append(buffer)
                 continue
-            if c != 0:
-                buf.append(i)
+
+
+            if i == '(':
+                buffer = vector(1)
                 index += 1
+                c = 0
+                while True:
+                    i = tokens[index]
+                    if i == '(':
+                        buffer.append(i)
+                        c += 1
+                        continue
+                    if i == ')':
+                        if c != 0:
+                            buffer.append(i)
+                            c -= 1
+                            index += 1
+                            continue
+                        break
+                    
+                    buffer.append(i)
+                    index += 1
+                index += 1
+                buffer.e = self.parent(buffer.e)
+                result.append(buffer)
                 continue
-            result.append(i)
             index += 1
+            result.append(i)
+
         return result
 
 
