@@ -18,6 +18,10 @@ class lexer():
             "right": r"(\))",
             "left": r"(\()",
             "arrow": r"(->)",
+            "plus": r"(\+)",
+            "minus": r"(\-)",
+            "star": r"(\*)",
+            "div": r"(\/)",
             "colon": r"(\:)",
             "comma": r"(\,)",
             "semicolon": r"(\;)"

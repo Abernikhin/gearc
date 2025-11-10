@@ -15,6 +15,10 @@ class node:
         self.child.append(value)
     
     def __getitem__(self, index):
+        if type(index) == str:
+            for i in self.child:
+                if i == index:
+                    return i
         return self.child[index]
     
     def __eq__(self, value):

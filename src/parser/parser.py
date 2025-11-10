@@ -90,7 +90,6 @@ class parser:
             return root
     
         if tokens[0] == "def":
-            breakpoint()
             name = node(token("name", "name"), node(tokens[1]))
             _args = node(token("name", "args"))
             type_buffer = []
@@ -254,36 +253,38 @@ class parser:
 
 
     def expr(self, tokens):
-        return self.factor(tokens)
+        index = 0
+        factor_t = tokens
+        tokens.reverse()
+        for i in tokens:
+            if type(i) == vector:
+                index += 1
+                continue
+            if (i == '+' or i == '-') and index == 0:
+                index += 1
+                continue
+            if i == '+' or i == '-':
+                return node(i, self.expr(tokens[0:index]), self.expr(tokens[index+1:]))
+            index += 1
+        
+        index = 0
+        for i in factor_t:
+            if type(i) == vector:
+                index += 1
+                continue
+            if i == '*' and index == 0:
+                index += 1
+                continue
+            if i == '*' or i == '/':
+                return node(i, self.expr(factor_t[index+1:]), self.expr(factor_t[0:index]))
+            index += 1
+        return self.factor(factor_t)
 
     def factor(self, tokens):
         if len(tokens) == 1:
+            if type(tokens[0]) == vector:
+                return self.expr(tokens[0].e)
             if tokens[0].type == "number":
                 return node(tokens[0])
             if tokens[0].type == "name":
                 return node(tokens[0])
-
-        if len(tokens) == 2:
-            if tokens[0].type == "name":
-                if type(tokens[1]) == vector:
-                    if tokens[1].sig == 0:
-                        pass
-                    if tokens[1].sig == 1:
-                        root = node(token("name", "call()"))
-                        name = node(tokens[0])
-                        buffer = []
-                        obj = []
-                        for i in tokens[1].e:
-                            if i == ',':
-                                obj.append(buffer)
-                                buf = []
-                                continue
-                            buf.append(i)
-                        if len(buffer) != 0:
-                            obj.append(buffer)
-                        
-                        for i in obj:
-                            name.append(self.expr(i))
-                        
-                        root.append(name)
-                        return root
