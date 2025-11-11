@@ -92,16 +92,28 @@ class parser:
         if tokens[0] == "def":
             name = node(token("name", "name"), node(tokens[1]))
             _args = node(token("name", "args"))
-            type_buffer = []
-            impl = None
-            for i in range(4, len(tokens)):
-                if type(tokens[i]) == vector:
-                    impl = self.function(tokens[i].e, tokens[5])
-                    break
-                type_buffer.append(tokens[i])
-            _type = node(token("name", "type"), self.type(type_buffer))
-            self.free += 5 + len(type_buffer)
-            return node(tokens[0], name, _args, _type, impl)
+            impl = node(token("name", "impl"))
+            _type = node(token("name", "type"))
+            root = node(tokens[0])
+            root.append(name)
+            if type(tokens[2]) == vector:
+                if tokens[2].sig != 1:
+                    raise
+                _args = self.args(tokens[2].e)
+            if type(tokens[3]) == vector:
+                if tokens[3].sig != 0:
+                    raise
+                impl = self.function(tokens[3].e)
+                _type.append(node(token("name", "void")))
+                self.free += 4
+                root.append(_type)
+                root.append(impl)
+                root.append(_args)
+                return root
+
+
+            return root
+            
         
         if tokens[0] == "using":
             pass
@@ -110,31 +122,79 @@ class parser:
             raise SyntaxError(f"wrong global expression: {tokens[0].value}")
         
     
-    def function(self, tokens, t):
+    def function(self, tokens):
         root = node(token("name", "impl"))
         obj = []
-        buf = []
-        tokens = self.parent(tokens)
+        buffer = []
         for i in tokens:
-            if i == ';':
-                obj.append(buf)
-                buf = []
+            if i == ";":
+                obj.append(buffer)
+                buffer = []
                 continue
-            buf.append(i)
-        if len(buf) != 0:
-            obj.append(buf)
+            buffer.append(i)
         
-        index = 0
+
         for i in obj:
+            if i[0] == "var":
+                if len(i) < 4:
+                    raise
+                if i[1].type != "name":
+                    raise
+                
+                name = node(token("name", "name"), node(i[1]))
+                type = node(token("type", "type"))
+                mode = False
+                a_buffer = []
+                type_buffer = []
+                for i in i[4:]:
+                    if i == '=':
+                        mode = True
+                    if mode:
+                        a_buffer.append(i)
+                        continue
+                    type_buffer.append(i)
+
+                type.append(self.type(type_buffer))
+                value = node(token("name", "value"))
+                value.append(self.expr(a_buffer))
+                root.append(node(i[0], name, type, value))
+
             if i[0] == "return":
-                i.pop(0)
-                root.append(node(token("name", "return"), self.expr(i)))
-                break
-            elif len(obj)-1 == index and t != 'void':
-                root.append(node(token("name", "return"), self.expr(i)))
-                break
-            else:
-                root.append(self.factor(i))
+                root.append(node(i[0], self.expr(i[1:])))
+        
+        return root
+
+
+    def args(self, tokens):
+        buffer = []
+        type_buffer = []
+        root = node(token("name", "args"))
+        index = 0
+        while index < len(tokens):
+            i = tokens[index]
+            if i == ':':
+                index += 1
+                
+                n = node(token("colon", ":"))
+
+                while i != ',' and index < len(tokens):
+                    i = tokens[index]
+                    type_buffer.append(i)
+                    index += 1
+                
+                n.append(self.type(type_buffer))
+                n.append(node(token("name", "enum")))
+                for i in buffer:
+                    if i == ',':
+                        continue
+                    n["enum"].append(node(i))
+                
+                root.append(n)
+                buffer = []
+                type_buffer = []
+
+                continue
+            buffer.append(i)
             index += 1
         
         return root
@@ -192,6 +252,8 @@ class parser:
 
     def parent(self, tokens):
         result = []
+        if len(tokens) == 0:
+            return tokens
 
         index = 0
         while index < len(tokens):
@@ -278,6 +340,7 @@ class parser:
             if i == '*' or i == '/':
                 return node(i, self.expr(factor_t[index+1:]), self.expr(factor_t[0:index]))
             index += 1
+
         return self.factor(factor_t)
 
     def factor(self, tokens):
@@ -288,3 +351,27 @@ class parser:
                 return node(tokens[0])
             if tokens[0].type == "name":
                 return node(tokens[0])
+            
+        if len(tokens) == 2:
+            if type(tokens[0]) == token:
+                if tokens[0].type == "name":
+                    if type(tokens[1]) == vector:
+                        if tokens[1].sig == 1:
+                            root = node(tokens[0])
+                            buffer = []
+                            obj = []
+                            for i in tokens[1].e:
+                                if i == ',':
+                                    obj.append(buffer)
+                                    buffer = []
+                                    continue
+                                buffer.append(i)
+                            if buffer != []:
+                                obj.append(buffer)
+                            
+                            for i in obj:
+                                root.append(self.expr(i))
+                            
+                            return node(token("call", "call()"), root)
+        
+        return node(token("name", "null"))

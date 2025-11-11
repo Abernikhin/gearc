@@ -22,6 +22,7 @@ class lexer():
             "minus": r"(\-)",
             "star": r"(\*)",
             "div": r"(\/)",
+            "eq": "(\=)",
             "colon": r"(\:)",
             "comma": r"(\,)",
             "semicolon": r"(\;)"
