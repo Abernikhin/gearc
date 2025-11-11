@@ -146,13 +146,14 @@ class parser:
                 mode = False
                 a_buffer = []
                 type_buffer = []
-                for i in i[4:]:
-                    if i == '=':
+                for j in i[3:]:
+                    if j == '=':
                         mode = True
-                    if mode:
-                        a_buffer.append(i)
                         continue
-                    type_buffer.append(i)
+                    if mode:
+                        a_buffer.append(j)
+                        continue
+                    type_buffer.append(j)
 
                 type.append(self.type(type_buffer))
                 value = node(token("name", "value"))
