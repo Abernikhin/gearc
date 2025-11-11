@@ -160,8 +160,11 @@ class parser:
                 value.append(self.expr(a_buffer))
                 root.append(node(i[0], name, type, value))
 
-            if i[0] == "return":
+            elif i[0] == "return":
                 root.append(node(i[0], self.expr(i[1:])))
+            
+            else:
+                root.append(self.expr(i))
         
         return root
 
@@ -317,62 +320,71 @@ class parser:
 
     def expr(self, tokens):
         index = 0
-        factor_t = tokens
         tokens.reverse()
+        reverse = tokens
+        tokens.reverse()
+        for i in reverse:
+            if type(i) == vector:
+                index += 1
+                continue
+            if index == 0 and (i == '+' or i == '-'):
+                index += 1
+                continue
+            if i == '+' or i == '-':
+                return node(i, self.expr(tokens[:index]), self.expr(tokens[index+1:]))
+            index += 1
+        
+        index = 0
         for i in tokens:
             if type(i) == vector:
                 index += 1
                 continue
-            if (i == '+' or i == '-') and index == 0:
+            if index == 0 and i == '*':
                 index += 1
                 continue
-            if i == '+' or i == '-':
-                return node(i, self.expr(tokens[0:index]), self.expr(tokens[index+1:]))
+            if i == '*' or i == '+':
+                return node(i, self.expr(tokens[:index]), self.expr(tokens[index+1:]))
             index += 1
         
-        index = 0
-        for i in factor_t:
-            if type(i) == vector:
-                index += 1
-                continue
-            if i == '*' and index == 0:
-                index += 1
-                continue
-            if i == '*' or i == '/':
-                return node(i, self.expr(factor_t[index+1:]), self.expr(factor_t[0:index]))
-            index += 1
-
-        return self.factor(factor_t)
+        return self.factor(tokens)
 
     def factor(self, tokens):
         if len(tokens) == 1:
-            if type(tokens[0]) == vector:
-                return self.expr(tokens[0].e)
-            if tokens[0].type == "number":
-                return node(tokens[0])
-            if tokens[0].type == "name":
-                return node(tokens[0])
-            
+            tokens = tokens[0]
+            if type(tokens) == vector:
+                if tokens.sig == 1:
+                    return self.expr(tokens.e)
+                if tokens.sig == 2:
+                    return node(token("module", "[]"), self.expr(tokens.e))
+            if tokens.type == "name":
+                return node(tokens)
+            if tokens.type == "number":
+                return node(tokens)
+
         if len(tokens) == 2:
-            if type(tokens[0]) == token:
-                if tokens[0].type == "name":
-                    if type(tokens[1]) == vector:
-                        if tokens[1].sig == 1:
-                            root = node(tokens[0])
-                            buffer = []
-                            obj = []
-                            for i in tokens[1].e:
-                                if i == ',':
-                                    obj.append(buffer)
-                                    buffer = []
-                                    continue
-                                buffer.append(i)
-                            if buffer != []:
+            first = tokens[0]
+            second = tokens[1]
+            if type(first) == vector:
+                pass
+            elif first.type == "name":
+                if type(second) == vector:
+                    if second.sig == 1:
+                        root = node(first)
+                        buffer = []
+                        obj = []
+                        for i in second.e:
+                            if i == ',':
                                 obj.append(buffer)
-                            
-                            for i in obj:
-                                root.append(self.expr(i))
-                            
-                            return node(token("call", "call()"), root)
-        
-        return node(token("name", "null"))
+                                buffer = []
+                                continue
+                            buffer.append(i)
+                        
+                        if buffer != []:
+                            obj.append(buffer)
+                        
+                        for i in obj:
+                            root.append(self.expr(i))
+                        
+                        return node(token("call()", "call()"), root)
+
+        return node(token("null", "null"))
