@@ -24,8 +24,10 @@ void free_lexer(struct lexer* self) {
     if (self == NULL) {
         return;
     }
-    for (int i = 0; i < 1024; i++) {
-        free_token(self->tokens[i]);
+    for (int i = 0; i < self->index; i++) {
+        if (self->tokens[i] != NULL) {
+            free_token(self->tokens[i]);
+        }
     }
     free(self->tokens);
     free(self);
@@ -35,7 +37,7 @@ void print_lexer(struct lexer* self) {
     if (self == NULL) {
         return;
     }
-    for (int i = 0; i < 1024; i++) {
+    for (int i = 0; i < self->index; i++) {
         if (self->tokens[i] == NULL) {
             break;
         }
@@ -47,7 +49,7 @@ static void lexer_add_token(struct lexer* self, struct token* token) {
     if (self == NULL || token == NULL) {
         return;
     }
-    if(!(self->index < self->max)) {
+    if (!(self->index < self->max)) {
         self->max *= 2;
         self->tokens = realloc(self->tokens, sizeof(struct token*) * self->max);
     }
@@ -61,7 +63,7 @@ static void lexer_advance(struct lexer* self) {
 
     self->position++;
     self->current = self->source[self->position];
-    if(self->current == '\n') {
+    if (self->current == '\n') {
         self->line++;
         self->column = 1;
     } else {
@@ -69,33 +71,79 @@ static void lexer_advance(struct lexer* self) {
     }
 }
 
-static void add_char(char * buffer, char c) {
-    int len = 0;
-    while (buffer[len] != '\0') {
-        len++;
+static void append_char(char** buffer, char c) {
+    if (buffer == NULL) {
+        return;
     }
-    buffer = realloc(buffer, len + 2);
-    buffer[len] = c;
-    buffer[len + 1] = '\0';
+
+    size_t len = (*buffer == NULL) ? 0 : strlen(*buffer);
+    char* new_buffer = realloc(*buffer, len + 2);
+    if (new_buffer == NULL) {
+        return;
+    }
+
+    *buffer = new_buffer;
+    (*buffer)[len] = c;
+    (*buffer)[len + 1] = '\0';
 }
 
-static void reset_buffer(char * buffer) {
-    buffer[0] = '\0';
+static void reset_buffer(char** buffer) {
+    if (buffer == NULL || *buffer == NULL) {
+        return;
+    }
+    (*buffer)[0] = '\0';
+}
+
+static enum TokenType identify_token_type(char* value);
+
+static void emit_buffer(struct lexer* self, char** buffer, int line, int column) {
+    if (self == NULL || buffer == NULL || *buffer == NULL || (*buffer)[0] == '\0') {
+        return;
+    }
+
+    char* value = strdup(*buffer);
+    if (value == NULL) {
+        return;
+    }
+
+    lexer_add_token(self, new_token(identify_token_type(value), value, line, column));
+    free(*buffer);
+    *buffer = malloc(sizeof(char));
+    if (*buffer != NULL) {
+        (*buffer)[0] = '\0';
+    }
+}
+
+static void emit_single_token(struct lexer* self, enum TokenType type, int line, int column, char c) {
+    if (self == NULL) {
+        return;
+    }
+
+    char* value = malloc(2);
+    if (value == NULL) {
+        return;
+    }
+    value[0] = c;
+    value[1] = '\0';
+    lexer_add_token(self, new_token(type, value, line, column));
 }
 
 static enum TokenType identify_token_type(char* value) {
+    if (value == NULL || value[0] == '\0') {
+        return Token_EOF;
+    }
     if (strcmp(value, "def") == 0) {
         return Token_Def_Kw;
     } else if (strcmp(value, "var") == 0) {
         return Token_Var_Kw;
     } else if (strcmp(value, "return") == 0) {
         return Token_Return_Kw;
-    } else if (isdigit(value[0])) {
+    } else if (isdigit((unsigned char)value[0])) {
         return Token_Number;
-    } else if (isalpha(value[0]) || value[0] == '_') {
+    } else if (isalpha((unsigned char)value[0]) || value[0] == '_') {
         return Token_Id;
     } else {
-        return Token_EOF; // Default case
+        return Token_EOF;
     }
 }
 
@@ -105,12 +153,14 @@ void tokenize(struct lexer* self) {
     }
 
     char* buffer = malloc(sizeof(char));
+    if (buffer == NULL) {
+        return;
+    }
     buffer[0] = '\0';
 
     while (self->current != '\0') {
         if (self->current == ' ' || self->current == '\t' || self->current == '\n') {
-            lexer_add_token(self, new_token(identify_token_type(buffer), buffer, self->line, self->column));
-            reset_buffer(buffer);
+            emit_buffer(self, &buffer, self->line, self->column);
             lexer_advance(self);
             continue;
         }
@@ -118,16 +168,110 @@ void tokenize(struct lexer* self) {
         if (self->current == '"') {
             lexer_advance(self);
             while (self->current != '"' && self->current != '\0') {
-                add_char(buffer, self->current);
+                append_char(&buffer, self->current);
                 lexer_advance(self);
             }
-            lexer_advance(self); // Skip closing quote
-            struct token* token = new_token(Token_String, buffer, self->line, self->column);
-            lexer_add_token(self, token);
-            buffer[0] = '\0'; // Reset buffer
+            if (self->current == '"') {
+                lexer_advance(self);
+            }
+
+            if (buffer[0] != '\0') {
+                char* value = strdup(buffer);
+                if (value != NULL) {
+                    lexer_add_token(self, new_token(Token_String, value, self->line, self->column));
+                }
+            }
+            free(buffer);
+            buffer = malloc(sizeof(char));
+            if (buffer != NULL) {
+                buffer[0] = '\0';
+            }
             continue;
         }
 
+        if (self->current == '(') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Open, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == ')') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Close, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '{') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Begin, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '}') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_End, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == ':') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Colon, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == ';') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Semicolon, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == ',') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Comma, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '=') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Assign, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '+') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Plus, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '-') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Minus, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '*') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Multiply, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '/') {
+            emit_buffer(self, &buffer, self->line, self->column);
+            emit_single_token(self, Token_Divide, self->line, self->column, self->current);
+            lexer_advance(self);
+            continue;
+        }
+
+        append_char(&buffer, self->current);
         lexer_advance(self);
     }
+
+    emit_buffer(self, &buffer, self->line, self->column);
+
+    char* eof_value = strdup("EOF");
+    if (eof_value != NULL) {
+        lexer_add_token(self, new_token(Token_EOF, eof_value, self->line, self->column));
+    }
+
+    free(buffer);
 }

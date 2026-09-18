@@ -1,11 +1,12 @@
 #include "lexer/token.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct token* new_token(enum TokenType type, char* value, int line, int column) {
     struct token* self = malloc(sizeof(struct token));
     self->type = type;
-    self->value = value;
+    self->value = strdup(value);
     self->line = line;
     self->column = column;
     return self;
@@ -20,6 +21,11 @@ void print_token(struct token* self) {
 }
 
 void free_token(struct token* self) {
-    free(self->value);
+    if (self == NULL) {
+        return;
+    }
+    if (self->value != NULL) {
+        free(self->value);
+    }
     free(self);
 }
