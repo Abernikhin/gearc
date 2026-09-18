@@ -1,0 +1,1 @@
+add_subdirectory(lexer ${CMAKE_CACHE_OUTPUT_DIRECTORIES}/lexer)
