@@ -1,13 +1,71 @@
 #include "lexer/lexer.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+static char* read_file_contents(const char*);
 
 int main(int argc, char** argv) {
-    
-    char* source = "def main() : int { var sum = 3 + 5; return 42; }";
+    if (argc < 2) {
+        fprintf(stderr, "\033[34m[help]\033[0m use >%s <file.gr>\n", argv[0]);
+        return 1;
+    }
+
+    char* source = read_file_contents(argv[1]);
+    if (source == NULL) {
+        return 1;
+    }
+
     struct lexer* lexer = new_lexer(source);
     tokenize(lexer);
     print_lexer(lexer);
     free_lexer(lexer);
+    free(source);
 
     return 0;
+}
 
+static char* read_file_contents(const char* file_path) {
+    FILE* file = fopen(file_path, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "\033[31m[error]\033[0m cant open file: %s\n", file_path);
+        return NULL;
+    }
+
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fprintf(stderr, "\033[31m[error]\033[0m cant seek file: %s\n", file_path);
+        fclose(file);
+        return NULL;
+    }
+
+    long file_size = ftell(file);
+    if (file_size < 0) {
+        fprintf(stderr, "\033[31m[error]\033[0m cant get file size: %s\n", file_path);
+        fclose(file);
+        return NULL;
+    }
+
+    if (fseek(file, 0, SEEK_SET) != 0) {
+        fprintf(stderr, "\033[31m[error]\033[0m cant seek file: %s\n", file_path);
+        fclose(file);
+        return NULL;
+    }
+
+    char* buffer = malloc((size_t)file_size + 1);
+    if (buffer == NULL) {
+        fprintf(stderr, "\033[31m[error]\033[0m cant allocate memory for file: %s\n", file_path);
+        fclose(file);
+        return NULL;
+    }
+
+    size_t read_count = fread(buffer, 1, (size_t)file_size, file);
+    if (read_count != (size_t)file_size) {
+        fprintf(stderr, "\033[31m[error]\033[0m cant read file: %s\n", file_path);
+        free(buffer);
+        fclose(file);
+        return NULL;
+    }
+
+    buffer[file_size] = '\0';
+    fclose(file);
+    return buffer;
 }
