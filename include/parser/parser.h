@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 struct parser {
-    struct node *root;
+    struct node **root;
     size_t node_count;
     struct token** tokens;
     struct token* current;

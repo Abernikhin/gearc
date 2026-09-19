@@ -1,9 +1,57 @@
 
 #include "parser/node.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #define EXPR_SENTINEL ((enum StatementNodes)-1)
+
+static void print_indent(int depth) {
+    for (int i = 0; i < depth; i++) {
+        printf("  ");
+    }
+}
+
+static const char* statement_node_name(enum StatementNodes node) {
+    switch (node) {
+        case Node_Var:
+            return "var";
+        case Node_Return:
+            return "return";
+        case Node_Assign:
+            return "assign";
+        case Node_Call:
+            return "call";
+        default:
+            return "unknown_statement";
+    }
+}
+
+static const char* expr_node_name(enum ExprNodes node) {
+    switch (node) {
+        case Node_Binary_Op:
+            return "binary_op";
+        case Node_Unary_Op:
+            return "unary_op";
+        case Node_Const:
+            return "const";
+        default:
+            return "unknown_expr";
+    }
+}
+
+static const char* const_node_name(enum ConstNodes node) {
+    switch (node) {
+        case Node_Number:
+            return "number";
+        case Node_String:
+            return "string";
+        case Node_Id:
+            return "id";
+        default:
+            return "unknown_const";
+    }
+}
 
 static void free_type(struct type* type) {
     if (type == NULL) {
@@ -223,4 +271,146 @@ void free_node(struct node* node) {
     }
 }
 
+void print_node(struct node* node, int depth) {
+    if (node == NULL) {
+        print_indent(depth);
+        printf("(null)\n");
+        return;
+    }
 
+    switch (node->global_node) {
+        case Node_Function: {
+            struct function* function = (struct function*)node;
+            print_indent(depth);
+            printf("Function: name=%s return_type=%s args=%s body=%s\n",
+                   function->name != NULL ? function->name : "<null>",
+                   function->return_type != NULL && function->return_type->name != NULL ? function->return_type->name : "<null>",
+                   function->args != NULL ? "<present>" : "<none>",
+                   function->body != NULL ? "<present>" : "<none>");
+
+            if (function->body != NULL) {
+                for (size_t i = 0; i < 1; i++) {
+                    if (function->body[i] != NULL) {
+                        print_node((struct node*)function->body[i], depth + 1);
+                    }
+                }
+            }
+            break;
+        }
+        case Node_Statement: {
+            struct statement* statement = (struct statement*)node;
+
+            if (statement->statement_node == EXPR_SENTINEL) {
+                struct expr* expr = (struct expr*)node;
+                print_indent(depth);
+                printf("Expr: %s\n", expr_node_name(expr->expr_node));
+
+                switch (expr->expr_node) {
+                    case Node_Binary_Op: {
+                        struct binary_op* binary = (struct binary_op*)node;
+                        print_indent(depth + 1);
+                        printf("op=%s\n", binary->op != NULL ? binary->op : "<null>");
+                        if (binary->left != NULL) {
+                            print_node((struct node*)binary->left, depth + 1);
+                        }
+                        if (binary->right != NULL) {
+                            print_node((struct node*)binary->right, depth + 1);
+                        }
+                        break;
+                    }
+                    case Node_Unary_Op: {
+                        struct unary_op* unary = (struct unary_op*)node;
+                        print_indent(depth + 1);
+                        printf("op=%s\n", unary->op != NULL ? unary->op : "<null>");
+                        if (unary->operand != NULL) {
+                            print_node((struct node*)unary->operand, depth + 1);
+                        }
+                        break;
+                    }
+                    case Node_Const: {
+                        struct constant* constant = (struct constant*)node;
+                        print_indent(depth + 1);
+                        printf("Const: %s\n", const_node_name(constant->const_node));
+
+                        switch (constant->const_node) {
+                            case Node_Number: {
+                                struct number* number = (struct number*)node;
+                                print_indent(depth + 2);
+                                printf("value=%d\n", number->value);
+                                break;
+                            }
+                            case Node_String: {
+                                struct string* text = (struct string*)node;
+                                print_indent(depth + 2);
+                                printf("value=%s\n", text->value != NULL ? text->value : "<null>");
+                                break;
+                            }
+                            case Node_Id: {
+                                struct id* id = (struct id*)node;
+                                print_indent(depth + 2);
+                                printf("name=%s\n", id->name != NULL ? id->name : "<null>");
+                                break;
+                            }
+                            default:
+                                break;
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                break;
+            }
+
+            print_indent(depth);
+            printf("Statement: %s\n", statement_node_name(statement->statement_node));
+
+            switch (statement->statement_node) {
+                case Node_Var: {
+                    struct var* variable = (struct var*)node;
+                    print_indent(depth + 1);
+                    printf("name=%s type=%s\n",
+                           variable->name != NULL ? variable->name : "<null>",
+                           variable->type != NULL && variable->type->name != NULL ? variable->type->name : "<null>");
+                    if (variable->value != NULL) {
+                        print_node((struct node*)variable->value, depth + 1);
+                    }
+                    break;
+                }
+                case Node_Assign: {
+                    struct assign* assignment = (struct assign*)node;
+                    print_indent(depth + 1);
+                    printf("target=%s\n", assignment->id != NULL && assignment->id->name != NULL ? assignment->id->name : "<null>");
+                    if (assignment->value != NULL) {
+                        print_node((struct node*)assignment->value, depth + 1);
+                    }
+                    break;
+                }
+                case Node_Call: {
+                    struct call* call = (struct call*)node;
+                    print_indent(depth + 1);
+                    printf("callee=%s args=%s\n",
+                           call->id != NULL && call->id->name != NULL ? call->id->name : "<null>",
+                           call->args != NULL ? "<present>" : "<none>");
+                    break;
+                }
+                case Node_Return: {
+                    struct return_statement* ret = (struct return_statement*)node;
+                    print_indent(depth + 1);
+                    printf("return\n");
+                    if (ret->value != NULL) {
+                        print_node((struct node*)ret->value, depth + 1);
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+            break;
+        }
+        default:
+            print_indent(depth);
+            printf("Unknown node\n");
+            break;
+    }
+}

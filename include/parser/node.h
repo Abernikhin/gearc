@@ -104,6 +104,7 @@ struct statement* create_statement(struct node*, enum StatementNodes, ...);
 struct expr* create_expr(struct statement*, enum ExprNodes, ...);
 struct constant* create_constant(struct expr*, enum ConstNodes, ...);
 
-void free_node(struct node* node);
+void print_node(struct node*, int);
+void free_node(struct node*);
 
 #endif // _NODE_
