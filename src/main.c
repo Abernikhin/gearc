@@ -1,4 +1,5 @@
 #include "lexer/lexer.h"
+#include "parser/parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,7 +18,10 @@ int main(int argc, char** argv) {
 
     struct lexer* lexer = new_lexer(source);
     tokenize(lexer);
-    print_lexer(lexer);
+    struct parser* parser = new_parser(lexer->tokens);
+    parse(parser);
+    print_parser(parser);
+    free_parser(parser);
     free_lexer(lexer);
     free(source);
 

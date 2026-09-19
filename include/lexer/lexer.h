@@ -10,6 +10,7 @@ struct lexer {
     int position;
     int line;
     int column;
+    int current_word_column;
     struct token** tokens;
     int index;
     int max;

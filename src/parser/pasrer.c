@@ -1,7 +1,9 @@
 #include "lexer/token.h"
+#include "parser/node.h"
 #include "parser/parser.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct parser* new_parser(struct token** tokens) {
     struct parser* p = (struct parser*)malloc(sizeof(struct parser));
@@ -9,6 +11,7 @@ struct parser* new_parser(struct token** tokens) {
     p->node_count = 0;
     p->tokens = tokens;
     p->current = *tokens;
+    p->index = 0;
     return p;
 }
 
@@ -33,9 +36,10 @@ static void get_current_line(struct parser* self, int index) {
     while(self->tokens[end]->line == self->tokens[index]->line && self->tokens[end]->type != Token_EOF) {
         end++;
     }
-    for(int i = start + 1; i < end; i++) {
+    for(int i = start; i < end; i++) {
         printf("%s ", self->tokens[i]->value);
     }
+    printf("\n");
 }
 
 static void append(struct parser* self, struct node* node) {
@@ -44,8 +48,44 @@ static void append(struct parser* self, struct node* node) {
     self->root[self->node_count - 1] = node;
 }
 
+static void advance(struct parser* self) {
+    if(self->current->type != Token_EOF) {
+        self->index++;
+        self->current = self->tokens[self->index];
+    }
+}
+
+static void error(struct parser* self) {
+    get_current_line(self, self->index);
+    for(int i = 1; i < self->current->column; i++) printf(" ");
+    for(int i = 0; i < strlen(self->current->value); i++) printf("^");
+    printf("\n");
+    free_parser(self);
+    exit(EXIT_FAILURE);
+}
+
+static void def(struct parser* self);
+
 void parse(struct parser* self) {
     while(self->current->type != Token_EOF) {
-        
+        if(self->current->type == Token_Def_Kw) {
+            def(self);
+        } else {
+            printf("\033[31m[error]\033[0m unknown statement\nat line %d\n", self->current->line);
+            error(self);
+        }
+    }
+}
+
+static void def(struct parser* self) {
+    advance(self);\
+    struct function* node = (struct function*)create_node(Node_Function);
+    if(self->current->type == Token_Id) {
+        printf("\033[32m[info]\033[0m function definition: %s\n", self->current->value);
+        node->name = strdup(self->current->value);
+        advance(self);
+    } else {
+        printf("\033[31m[error]\033[0m unexpected name for function\nat line %d\n", self->current->line);
+        error(self);
     }
 }

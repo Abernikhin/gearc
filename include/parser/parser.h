@@ -10,6 +10,7 @@ struct parser {
     size_t node_count;
     struct token** tokens;
     struct token* current;
+    size_t index;
 };
 
 struct parser* new_parser(struct token**);
