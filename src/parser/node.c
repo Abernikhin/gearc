@@ -77,12 +77,26 @@ static void free_array_of_statements(struct statement** statements, size_t count
 }
 
 struct node* create_node(enum GlobalNodes global_node) {
-    struct node* node = calloc(1, sizeof(*node));
+    size_t node_size = sizeof(struct node);
+
+    switch (global_node) {
+        case Node_Function:
+            node_size = sizeof(struct function);
+            break;
+        case Node_Statement:
+            node_size = sizeof(struct statement);
+            break;
+        default:
+            break;
+    }
+
+    struct node* node = calloc(1, node_size);
     if (node == NULL) {
         return NULL;
     }
 
     node->global_node = global_node;
+
     return node;
 }
 
@@ -148,7 +162,7 @@ void free_node(struct node* node) {
             free_type(function->return_type);
 
             if (function->args != NULL) {
-                for (size_t i = 0; i < 1; i++) {
+                for (int i = 0; i < function->param_count; i++) {
                     free(function->args[i].name);
                     free_type(function->args[i].type);
                 }
@@ -156,7 +170,7 @@ void free_node(struct node* node) {
             }
 
             if (function->body != NULL) {
-                for (size_t i = 0; i < 1; i++) {
+                for (size_t i = 0; i < function->body_count; i++) {
                     if (function->body[i] != NULL) {
                         free_node((struct node*)function->body[i]);
                     }
@@ -287,6 +301,16 @@ void print_node(struct node* node, int depth) {
                    function->return_type != NULL && function->return_type->name != NULL ? function->return_type->name : "<null>",
                    function->args != NULL ? "<present>" : "<none>",
                    function->body != NULL ? "<present>" : "<none>");
+
+            for (int i = 0; i < function->param_count; i++) {
+                print_indent(depth + 1);
+                printf("Parameter: name=%s type=%s%s\n",
+                       function->args[i].name != NULL ? function->args[i].name : "<null>",
+                       function->args[i].type != NULL && function->args[i].type->name != NULL
+                           ? function->args[i].type->name
+                           : "<null>",
+                       function->args[i].type != NULL && function->args[i].type->is_pointer ? "*" : "");
+            }
 
             if (function->body != NULL) {
                 for (size_t i = 0; i < 1; i++) {

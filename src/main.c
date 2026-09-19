@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 
     struct lexer* lexer = new_lexer(source);
     tokenize(lexer);
-    struct parser* parser = new_parser(lexer->tokens);
+    struct parser* parser = new_parser(lexer->tokens, lexer);
     parse(parser);
     print_parser(parser);
     free_parser(parser);

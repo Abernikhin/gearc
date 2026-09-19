@@ -11,9 +11,10 @@ struct parser {
     struct token** tokens;
     struct token* current;
     size_t index;
+    struct lexer* lexer;
 };
 
-struct parser* new_parser(struct token**);
+struct parser* new_parser(struct token**, struct lexer*);
 void free_parser(struct parser*);
 void print_parser(struct parser*);
 void parse(struct parser*);

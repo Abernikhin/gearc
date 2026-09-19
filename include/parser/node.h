@@ -4,6 +4,7 @@
 
 #include "NodeTypes.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 struct type {
     bool is_pointer;
@@ -91,11 +92,13 @@ struct return_statement {
 struct function {
     struct node parent;
     struct type* return_type;
-    struct {
+    struct param {
         char* name;
         struct type* type;
     } *args;
+    int param_count;
     struct statement** body;
+    size_t body_count;
     char* name;
 };
 

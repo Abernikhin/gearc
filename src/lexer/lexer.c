@@ -103,6 +103,7 @@ static void emit_buffer(struct lexer* self, char** buffer) {
     }
 
     lexer_add_token(self, new_token(identify_token_type(value), value, self->line, self->current_word_column));
+    free(value);
     free(*buffer);
     *buffer = malloc(sizeof(char));
     if (*buffer != NULL) {
@@ -123,6 +124,7 @@ static void emit_single_token(struct lexer* self, enum TokenType type, char c) {
     value[0] = c;
     value[1] = '\0';
     lexer_add_token(self, new_token(type, value, self->line, self->column));
+    free(value);
 }
 
 static enum TokenType identify_token_type(char* value) {
@@ -183,6 +185,7 @@ void tokenize(struct lexer* self) {
                 char* value = strdup(buffer);
                 if (value != NULL) {
                     lexer_add_token(self, new_token(Token_String, value, self->line, self->column));
+                    free(value);
                 }
             }
             free(buffer);
@@ -275,6 +278,7 @@ void tokenize(struct lexer* self) {
     char* eof_value = strdup("EOF");
     if (eof_value != NULL) {
         lexer_add_token(self, new_token(Token_EOF, eof_value, self->line, self->column));
+        free(eof_value);
     }
 
     free(buffer);
