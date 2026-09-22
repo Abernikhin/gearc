@@ -1,7 +1,9 @@
+#include "lexer/TokenTypes.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "parser/node.h"
 #include "parser/parser.h"
+#include "expr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,8 +68,8 @@ static void advance(struct parser* self) {
 
 static void error(struct parser* self) {
     get_current_line(self, self->index);
-    for(int i = 1; i < self->current->column; i++) printf(" ");
-    for(int i = 0; i < strlen(self->current->value); i++) printf("^");
+    for(int i = 1; i < self->current->column-1; i++) printf(" ");
+    /*for(int i = 0; i < strlen(self->current->value); i++)*/ printf("^");
     printf("\n");
     free_lexer(self->lexer);
     free_parser(self);
@@ -94,6 +96,23 @@ static void add_param(struct function* func, char* name, struct type* type) {
     func->args[func->param_count - 1].type = type;
 }
 
+static void append_to_body(struct function* self, struct statement* child) {
+    if (self == NULL || child == NULL) {
+        return;
+    }
+
+    size_t new_count = self->body_count + 1;
+    struct statement** new_body = realloc(self->body, sizeof(*new_body) * new_count);
+    if (new_body == NULL) {
+        free_node((struct node*)child);
+        return;
+    }
+
+    self->body = new_body;
+    self->body[self->body_count] = child;
+    self->body_count = new_count;
+}
+
 static struct type* create_type(char* type, bool is_pointer) {
     if (type == NULL) {
         return NULL;
@@ -113,6 +132,9 @@ static struct type* create_type(char* type, bool is_pointer) {
     result->is_pointer = is_pointer;
     return result;
 }
+
+static struct statement* Return(struct parser* self);
+static void append_to_body(struct function* self, struct statement* child);
 
 static void def(struct parser* self) {
     advance(self);
@@ -181,6 +203,20 @@ static void def(struct parser* self) {
 
     if(self->current->type == Token_Begin) {
         advance(self);
+        while (self->current->type != Token_End && self->current->type != Token_EOF)
+        {
+            if(self->current->type == Token_Return_Kw) {
+                append_to_body(node, (struct statement*)Return(self));
+            }
+
+            if(self->current->type == Token_Semicolon) {
+                advance(self);
+            } else {
+                printf("\033[31m[error]\033[0m at end of statemant must be ; at line %d\n", self->current->line);
+                error(self);
+            }
+        }
+        
         if(self->current->type == Token_End) {
             advance(self);
         }
@@ -188,4 +224,11 @@ static void def(struct parser* self) {
 
     append(self, (struct node*)node);
 
+}
+
+static struct statement* Return(struct parser* self) {
+    advance(self);
+    struct return_statement* ret = (struct return_statement*)create_statement(create_node(Node_Statement), Node_Return);
+    ret->value = expr(self);
+    return (struct statement*)ret;
 }
