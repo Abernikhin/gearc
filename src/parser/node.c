@@ -76,6 +76,64 @@ static void free_array_of_statements(struct statement** statements, size_t count
     free(statements);
 }
 
+static void print_expr_tree(struct expr* expr, int depth) {
+    if (expr == NULL) {
+        print_indent(depth);
+        printf("(null)\n");
+        return;
+    }
+
+    if (expr->expr_node == Node_Const) {
+        struct constant* constant = (struct constant*)expr;
+        print_indent(depth);
+        switch (constant->const_node) {
+            case Node_Number:
+                printf("Const: %d\n", ((struct number*)expr)->value);
+                break;
+            case Node_String:
+                printf("Const: %s\n", ((struct string*)expr)->value != NULL ? ((struct string*)expr)->value : "<null>");
+                break;
+            case Node_Id:
+                printf("Const: %s\n", ((struct id*)expr)->name != NULL ? ((struct id*)expr)->name : "<null>");
+                break;
+            default:
+                printf("Const: unknown\n");
+                break;
+        }
+        return;
+    }
+
+    switch (expr->expr_node) {
+        case Node_Binary_Op: {
+            struct binary_op* binary = (struct binary_op*)expr;
+            print_indent(depth);
+            printf("%s\n", binary->op != NULL ? binary->op : "<null>");
+            if (binary->left != NULL) {
+                print_expr_tree(binary->left, depth + 1);
+            }
+            if (binary->right != NULL) {
+                print_expr_tree(binary->right, depth + 1);
+            }
+            break;
+        }
+        case Node_Unary_Op: {
+            struct unary_op* unary = (struct unary_op*)expr;
+            print_indent(depth);
+            printf("%s\n", unary->op != NULL ? unary->op : "<null>");
+            if (unary->operand != NULL) {
+                print_expr_tree(unary->operand, depth + 1);
+            }
+            break;
+        }
+        default:
+            print_indent(depth);
+            printf("Expr: %s\n", expr_node_name(expr->expr_node));
+            print_indent(depth + 1);
+            printf("<unsupported expr>\n");
+            break;
+    }
+}
+
 struct node* create_node(enum GlobalNodes global_node) {
     size_t node_size = sizeof(struct node);
 
@@ -101,7 +159,26 @@ struct node* create_node(enum GlobalNodes global_node) {
 }
 
 struct statement* create_statement(struct node* parent, enum StatementNodes statement_node, ...) {
-    struct statement* statement = calloc(1, sizeof(*statement));
+    size_t node_size = sizeof(struct statement);
+
+    switch (statement_node) {
+        case Node_Var:
+            node_size = sizeof(struct var);
+            break;
+        case Node_Return:
+            node_size = sizeof(struct return_statement);
+            break;
+        case Node_Assign:
+            node_size = sizeof(struct assign);
+            break;
+        case Node_Call:
+            node_size = sizeof(struct call);
+            break;
+        default:
+            break;
+    }
+
+    struct statement* statement = calloc(1, node_size);
     if (statement == NULL) {
         return NULL;
     }
@@ -117,7 +194,23 @@ struct statement* create_statement(struct node* parent, enum StatementNodes stat
 }
 
 struct expr* create_expr(struct statement* parent, enum ExprNodes expr_node, ...) {
-    struct expr* expr = calloc(1, sizeof(*expr));
+    size_t node_size = sizeof(struct expr);
+
+    switch (expr_node) {
+        case Node_Binary_Op:
+            node_size = sizeof(struct binary_op);
+            break;
+        case Node_Unary_Op:
+            node_size = sizeof(struct unary_op);
+            break;
+        case Node_Const:
+            node_size = sizeof(struct constant);
+            break;
+        default:
+            break;
+    }
+
+    struct expr* expr = calloc(1, node_size);
     if (expr == NULL) {
         return NULL;
     }
@@ -134,7 +227,23 @@ struct expr* create_expr(struct statement* parent, enum ExprNodes expr_node, ...
 }
 
 struct constant* create_constant(struct expr* parent, enum ConstNodes const_node, ...) {
-    struct constant* constant = calloc(1, sizeof(*constant));
+    size_t node_size = sizeof(struct constant);
+
+    switch (const_node) {
+        case Node_Number:
+            node_size = sizeof(struct number);
+            break;
+        case Node_String:
+            node_size = sizeof(struct string);
+            break;
+        case Node_Id:
+            node_size = sizeof(struct id);
+            break;
+        default:
+            break;
+    }
+
+    struct constant* constant = calloc(1, node_size);
     if (constant == NULL) {
         return NULL;
     }
@@ -313,7 +422,7 @@ void print_node(struct node* node, int depth) {
             }
 
             if (function->body != NULL) {
-                for (size_t i = 0; i < 1; i++) {
+                for (size_t i = 0; i < function->body_count; i++) {
                     if (function->body[i] != NULL) {
                         print_node((struct node*)function->body[i], depth + 1);
                     }
@@ -386,44 +495,44 @@ void print_node(struct node* node, int depth) {
                 break;
             }
 
-            print_indent(depth);
-            printf("Statement: %s\n", statement_node_name(statement->statement_node));
-
             switch (statement->statement_node) {
                 case Node_Var: {
                     struct var* variable = (struct var*)node;
-                    print_indent(depth + 1);
-                    printf("name=%s type=%s\n",
-                           variable->name != NULL ? variable->name : "<null>",
-                           variable->type != NULL && variable->type->name != NULL ? variable->type->name : "<null>");
+                    print_indent(depth);
+                    printf("Statement: var %s",
+                           variable->name != NULL ? variable->name : "<null>");
+                    if (variable->type != NULL && variable->type->name != NULL) {
+                        printf(": %s", variable->type->name);
+                    }
+                    printf(" = \n");
                     if (variable->value != NULL) {
-                        print_node((struct node*)variable->value, depth + 1);
+                        print_expr_tree(variable->value, depth + 1);
                     }
                     break;
                 }
                 case Node_Assign: {
                     struct assign* assignment = (struct assign*)node;
-                    print_indent(depth + 1);
-                    printf("target=%s\n", assignment->id != NULL && assignment->id->name != NULL ? assignment->id->name : "<null>");
+                    print_indent(depth);
+                    printf("Statement: assign %s =\n",
+                           assignment->id != NULL && assignment->id->name != NULL ? assignment->id->name : "<null>");
                     if (assignment->value != NULL) {
-                        print_node((struct node*)assignment->value, depth + 1);
+                        print_expr_tree(assignment->value, depth + 1);
                     }
                     break;
                 }
                 case Node_Call: {
                     struct call* call = (struct call*)node;
-                    print_indent(depth + 1);
-                    printf("callee=%s args=%s\n",
-                           call->id != NULL && call->id->name != NULL ? call->id->name : "<null>",
-                           call->args != NULL ? "<present>" : "<none>");
+                    print_indent(depth);
+                    printf("Statement: call %s\n",
+                           call->id != NULL && call->id->name != NULL ? call->id->name : "<null>");
                     break;
                 }
                 case Node_Return: {
                     struct return_statement* ret = (struct return_statement*)node;
-                    print_indent(depth + 1);
-                    printf("return\n");
+                    print_indent(depth);
+                    printf("Statement: return\n");
                     if (ret->value != NULL) {
-                        print_node((struct node*)ret->value, depth + 1);
+                        print_expr_tree(ret->value, depth + 1);
                     }
                     break;
                 }

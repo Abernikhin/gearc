@@ -134,6 +134,7 @@ static struct type* create_type(char* type, bool is_pointer) {
 }
 
 static struct statement* Return(struct parser* self);
+static struct statement* Var(struct parser* self);
 static void append_to_body(struct function* self, struct statement* child);
 
 static void def(struct parser* self) {
@@ -207,7 +208,11 @@ static void def(struct parser* self) {
         {
             if(self->current->type == Token_Return_Kw) {
                 append_to_body(node, (struct statement*)Return(self));
+            } else if (self->current->type == Token_Var_Kw)
+            {
+                append_to_body(node, (struct statement*)Var(self));
             }
+            
 
             if(self->current->type == Token_Semicolon) {
                 advance(self);
@@ -224,6 +229,46 @@ static void def(struct parser* self) {
 
     append(self, (struct node*)node);
 
+}
+
+static struct statement* Var(struct parser* self) {
+    advance(self);
+
+    struct var* variable = (struct var*)create_statement(create_node(Node_Statement), Node_Var);
+    if (variable == NULL) {
+        return NULL;
+    }
+
+    if (self->current->type != Token_Id) {
+        printf("\033[31m[error]\033[0m expected variable name at line %d\n", self->current->line);
+        error(self);
+    }
+
+    variable->name = strdup(self->current->value);
+    advance(self);
+
+    if (self->current->type == Token_Colon) {
+        advance(self);
+        variable->type = create_type(self->current->value, false);
+        if (variable->type == NULL) {
+            printf("\033[31m[error]\033[0m invalid variable type at line %d\n", self->current->line);
+            error(self);
+        }
+        advance(self);
+    } else {
+        variable->type = create_type("void", false);
+    }
+
+    if (self->current->type == Token_Assign) {
+        advance(self);
+        variable->value = expr(self);
+        if (variable->value == NULL) {
+            printf("\033[31m[error]\033[0m invalid variable initializer at line %d\n", self->current->line);
+            error(self);
+        }
+    }
+
+    return (struct statement*)variable;
 }
 
 static struct statement* Return(struct parser* self) {
