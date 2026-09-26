@@ -18,7 +18,10 @@ enum TokenType {
     Token_Close, // )
     Token_Begin, // {
     Token_End, // }
+    Token_Less, // <
+    Token_Greater, // >
 
+    Token_And, // &
     Token_Colon, // :
     Token_Semicolon, // ;
     Token_Comma, // ,

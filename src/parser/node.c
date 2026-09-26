@@ -53,13 +53,37 @@ static const char* const_node_name(enum ConstNodes node) {
     }
 }
 
-static void free_type(struct type* type) {
+void free_type(struct type* type) {
     if (type == NULL) {
         return;
     }
 
     free(type->name);
+    free_type(type->template);
     free(type);
+}
+
+static void print_type(struct type* type) {
+    if (type == NULL) {
+        printf("<null>");
+        return;
+    }
+
+    if (type->is_reference) {
+        printf("&");
+    }
+
+    if (type->name != NULL) {
+        printf("%s", type->name);
+    } else {
+        printf("<null>");
+    }
+
+    if (type->is_template && type->template != NULL) {
+        printf("<");
+        print_type(type->template);
+        printf(">");
+    }
 }
 
 static void free_array_of_statements(struct statement** statements, size_t count) {
@@ -405,20 +429,18 @@ void print_node(struct node* node, int depth) {
         case Node_Function: {
             struct function* function = (struct function*)node;
             print_indent(depth);
-            printf("Function: name=%s return_type=%s args=%s body=%s\n",
-                   function->name != NULL ? function->name : "<null>",
-                   function->return_type != NULL && function->return_type->name != NULL ? function->return_type->name : "<null>",
+            printf("Function: name=%s return_type=", function->name != NULL ? function->name : "<null>");
+            print_type(function->return_type);
+            printf(" args=%s body=%s\n",
                    function->args != NULL ? "<present>" : "<none>",
                    function->body != NULL ? "<present>" : "<none>");
 
             for (int i = 0; i < function->param_count; i++) {
                 print_indent(depth + 1);
-                printf("Parameter: name=%s type=%s%s\n",
-                       function->args[i].name != NULL ? function->args[i].name : "<null>",
-                       function->args[i].type != NULL && function->args[i].type->name != NULL
-                           ? function->args[i].type->name
-                           : "<null>",
-                       function->args[i].type != NULL && function->args[i].type->is_pointer ? "*" : "");
+                printf("Parameter: name=%s type=",
+                       function->args[i].name != NULL ? function->args[i].name : "<null>");
+                print_type(function->args[i].type);
+                printf("\n");
             }
 
             if (function->body != NULL) {

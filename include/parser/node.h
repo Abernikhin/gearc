@@ -7,9 +7,13 @@
 #include <stddef.h>
 
 struct type {
-    bool is_pointer;
+    bool is_reference;
+    bool is_template;
+    struct type* template;
     char* name;
 };
+
+void free_type(struct type* type);
 
 /* Root of the AST hierarchy. */
 struct node {

@@ -113,7 +113,7 @@ static void append_to_body(struct function* self, struct statement* child) {
     self->body_count = new_count;
 }
 
-static struct type* create_type(char* type, bool is_pointer) {
+static struct type* create_type(char* type, bool is_reference, bool is_template, struct type* template) {
     if (type == NULL) {
         return NULL;
     }
@@ -129,8 +129,59 @@ static struct type* create_type(char* type, bool is_pointer) {
         return NULL;
     }
 
-    result->is_pointer = is_pointer;
+    result->is_reference = is_reference;
+    result->is_template = is_template;
+    result->template = template;
     return result;
+}
+
+static struct type* parse_type(struct parser* self) {
+    if (self == NULL || self->current == NULL) {
+        return NULL;
+    }
+
+    bool is_reference = false;
+    if (self->current->type == Token_And) {
+        is_reference = true;
+        advance(self);
+    }
+
+    if (self->current == NULL || self->current->type != Token_Id) {
+        return NULL;
+    }
+
+    char* name = strdup(self->current->value);
+    if (name == NULL) {
+        return NULL;
+    }
+
+    advance(self);
+
+    if (self->current != NULL && self->current->type == Token_Multiply) {
+        free(name);
+        return NULL;
+    }
+
+    struct type* type = create_type(name, is_reference, false, NULL);
+    free(name);
+
+    if (self->current != NULL && self->current->type == Token_Less) {
+        advance(self);
+        struct type* template = parse_type(self);
+        if (template == NULL || self->current == NULL || self->current->type != Token_Greater) {
+            free_type(type);
+            if (template != NULL) {
+                free_type(template);
+            }
+            return NULL;
+        }
+
+        advance(self);
+        type->is_template = true;
+        type->template = template;
+    }
+
+    return type;
 }
 
 static struct statement* Return(struct parser* self);
@@ -160,8 +211,9 @@ static void def(struct parser* self) {
                 advance(self);
                 if(self->current->type == Token_Colon) {
                     advance(self);
-                    arg_type = create_type(self->current->value, false);
+                    arg_type = parse_type(self);
                     if (arg_type == NULL) {
+                        printf("\033[31m[error]\033[0m invalid argument type at line %d\n", self->current->line);
                         error(self);
                     }
                     add_param(node, arg_name, arg_type);
@@ -170,7 +222,6 @@ static void def(struct parser* self) {
                     free(arg_type);
                     error(self);
                 }
-                advance(self);
                 if(self->current->type == Token_Comma) {
                     advance(self);
                     continue;
@@ -196,10 +247,13 @@ static void def(struct parser* self) {
 
     if(self->current->type == Token_Colon) {
         advance(self);
-        node->return_type = create_type(self->current->value, false);
-        advance(self);
+        node->return_type = parse_type(self);
+        if (node->return_type == NULL) {
+            printf("\033[31m[error]\033[0m invalid return type at line %d\n", self->current->line);
+            error(self);
+        }
     } else {
-        node->return_type = create_type("void", false);
+        node->return_type = create_type("void", false, false, NULL);
     }
 
     if(self->current->type == Token_Begin) {
@@ -249,14 +303,13 @@ static struct statement* Var(struct parser* self) {
 
     if (self->current->type == Token_Colon) {
         advance(self);
-        variable->type = create_type(self->current->value, false);
+        variable->type = parse_type(self);
         if (variable->type == NULL) {
             printf("\033[31m[error]\033[0m invalid variable type at line %d\n", self->current->line);
             error(self);
         }
-        advance(self);
     } else {
-        variable->type = create_type("void", false);
+        variable->type = create_type("void", false, false, NULL);
     }
 
     if (self->current->type == Token_Assign) {

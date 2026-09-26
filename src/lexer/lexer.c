@@ -208,6 +208,18 @@ void tokenize(struct lexer* self) {
             lexer_advance(self);
             continue;
         }
+        if (self->current == '<') {
+            emit_buffer(self, &buffer);
+            emit_single_token(self, Token_Less, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '>') {
+            emit_buffer(self, &buffer);
+            emit_single_token(self, Token_Greater, self->current);
+            lexer_advance(self);
+            continue;
+        }
         if (self->current == '{') {
             emit_buffer(self, &buffer);
             emit_single_token(self, Token_Begin, self->current);
@@ -217,6 +229,12 @@ void tokenize(struct lexer* self) {
         if (self->current == '}') {
             emit_buffer(self, &buffer);
             emit_single_token(self, Token_End, self->current);
+            lexer_advance(self);
+            continue;
+        }
+        if (self->current == '&') {
+            emit_buffer(self, &buffer);
+            emit_single_token(self, Token_And, self->current);
             lexer_advance(self);
             continue;
         }
