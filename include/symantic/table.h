@@ -11,33 +11,37 @@ struct symbol_var {
     struct type* type;
 };
 
-struct symbol_fun {
-    char* name;
-    struct type* return_type;
-    struct type** arg_types;
-    int arg_count;
-};
-
 struct scope {
-    struct scope* parent;
-
-    struct symbol_var* vars;
-    int var_count;
-    int var_capacity;
-
-    struct symbol_fun* funcs;
-    int fun_count;
-    int fun_capacity;
+    struct symbol_var** vars;
+    int varc;
 };
 
-bool typcmp(struct type* left, struct type* right);
-bool scope_insert_var(struct scope* scope, const char* name, struct type* type);
-struct symbol_var* scope_lookup_var(struct scope* scope, const char* name);
-bool scope_insert_fun(struct scope* scope,
-                     const char* name,
-                     struct type* return_type,
-                     struct type** arg_types,
-                     int arg_count);
-struct symbol_fun* scope_lookup_fun(struct scope* scope, const char* name);
+struct symbol_fun
+{
+    char* name;
+    struct type* type;
+    struct type** args;
+    int argc;
+};
+
+
+struct root {
+    struct symbol_fun** funs;
+    int func;
+};
+
+bool tpcmp(struct type*, struct type*);
+
+struct symbol_var* var_new(char*, struct type*);
+struct symbol_fun* fun_new(char*, struct type*, struct type**, int);
+
+void print_var(struct symbol_var*);
+void print_fun(struct symbol_fun*);
+
+void free_var(struct symbol_var*);
+void free_fun(struct symbol_fun*);
+
+struct symbol_var* var_lookup(struct scope*, char*);
+struct symbol_fun* fun_lookup(struct scope*, char*);
 
 #endif // _Table_
