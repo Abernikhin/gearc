@@ -82,9 +82,10 @@ struct assign {
 };
 
 struct call {
-    struct statement parent;
+    struct expr parent;
     struct id* id;
     struct expr** args;
+    size_t arg_count;
 };
 
 struct return_statement {

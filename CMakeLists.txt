@@ -15,3 +15,4 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include_directories(include)
 add_subdirectory(src ${CMAKE_CACHE_OUTPUT_DIRECTORIES}/src)
+add_subdirectory(src/symantic ${CMAKE_CACHE_OUTPUT_DIRECTORIES}/symantic)

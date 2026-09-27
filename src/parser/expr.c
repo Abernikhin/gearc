@@ -64,6 +64,19 @@ static struct expr* create_id(const char* name) {
 	return &id->parent.parent;
 }
 
+static struct expr* create_call(struct id* id, struct expr** args, size_t arg_count) {
+	struct call* call = calloc(1, sizeof(*call));
+	if (call == NULL) {
+		return NULL;
+	}
+
+	call->id = id;
+	call->args = args;
+	call->arg_count = arg_count;
+	init_expr_parent(&call->parent, Node_Call);
+	return &call->parent;
+}
+
 static struct expr* create_unary(const char* operator, struct expr* operand) {
 	struct unary_op* unary = calloc(1, sizeof(*unary));
 	if (unary == NULL) {
@@ -138,8 +151,75 @@ struct expr* factor(struct parser* parser) {
 	}
 
 	if (token->type == Token_Id) {
-		struct expr* value = create_id(token->value);
+		char* name = strdup(token->value);
+		if (name == NULL) {
+			return NULL;
+		}
+
 		advance_expr(parser);
+		if (parser->current != NULL && parser->current->type == Token_Open) {
+			advance_expr(parser);
+			struct expr** args = NULL;
+			size_t arg_count = 0;
+
+			if (parser->current != NULL && parser->current->type != Token_Close) {
+				while (1) {
+					struct expr* arg = expr(parser);
+					if (arg == NULL) {
+						for (size_t i = 0; i < arg_count; i++) {
+							free_node((struct node*)args[i]);
+						}
+						free(args);
+						free(name);
+						return NULL;
+					}
+
+					struct expr** new_args = realloc(args, sizeof(*new_args) * (arg_count + 1));
+					if (new_args == NULL) {
+						free_node((struct node*)arg);
+						for (size_t i = 0; i < arg_count; i++) {
+							free_node((struct node*)args[i]);
+						}
+						free(args);
+						free(name);
+						return NULL;
+					}
+
+					args = new_args;
+					args[arg_count++] = arg;
+
+					if (parser->current == NULL || parser->current->type != Token_Comma) {
+						break;
+					}
+					advance_expr(parser);
+				}
+			}
+
+			if (parser->current == NULL || parser->current->type != Token_Close) {
+				for (size_t i = 0; i < arg_count; i++) {
+					free_node((struct node*)args[i]);
+				}
+				free(args);
+				free(name);
+				return NULL;
+			}
+
+			advance_expr(parser);
+			struct id* function_id = (struct id*)create_id(name);
+			free(name);
+			if (function_id == NULL) {
+				for (size_t i = 0; i < arg_count; i++) {
+					free_node((struct node*)args[i]);
+				}
+				free(args);
+				return NULL;
+			}
+
+			return create_call(function_id, args, arg_count);
+		}
+
+		struct expr* value = create_id(name);
+		free(name);
 		return value;
 	}
 

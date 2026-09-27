@@ -20,8 +20,6 @@ static const char* statement_node_name(enum StatementNodes node) {
             return "return";
         case Node_Assign:
             return "assign";
-        case Node_Call:
-            return "call";
         default:
             return "unknown_statement";
     }
@@ -33,6 +31,8 @@ static const char* expr_node_name(enum ExprNodes node) {
             return "binary_op";
         case Node_Unary_Op:
             return "unary_op";
+        case Node_Call:
+            return "call";
         case Node_Const:
             return "const";
         default:
@@ -149,6 +149,21 @@ static void print_expr_tree(struct expr* expr, int depth) {
             }
             break;
         }
+        case Node_Call: {
+            struct call* call = (struct call*)expr;
+            print_indent(depth);
+            printf("call %s(\n", call->id != NULL && call->id->name != NULL ? call->id->name : "<null>");
+            if (call->args != NULL) {
+                for (size_t i = 0; i < call->arg_count; i++) {
+                    if (call->args[i] != NULL) {
+                        print_expr_tree(call->args[i], depth + 1);
+                    }
+                }
+            }
+            print_indent(depth);
+            printf(")\n");
+            break;
+        }
         default:
             print_indent(depth);
             printf("Expr: %s\n", expr_node_name(expr->expr_node));
@@ -194,9 +209,6 @@ struct statement* create_statement(struct node* parent, enum StatementNodes stat
             break;
         case Node_Assign:
             node_size = sizeof(struct assign);
-            break;
-        case Node_Call:
-            node_size = sizeof(struct call);
             break;
         default:
             break;
@@ -337,6 +349,21 @@ void free_node(struct node* node) {
                         free(unary);
                         break;
                     }
+                    case Node_Call: {
+                        struct call* call = (struct call*)node;
+                        if (call->id != NULL) {
+                            free(call->id->name);
+                            free(call->id);
+                        }
+                        if (call->args != NULL) {
+                            for (size_t i = 0; i < call->arg_count; i++) {
+                                free_node((struct node*)call->args[i]);
+                            }
+                            free(call->args);
+                        }
+                        free(call);
+                        break;
+                    }
                     case Node_Const: {
                         struct constant* constant = (struct constant*)node;
 
@@ -385,19 +412,6 @@ void free_node(struct node* node) {
                     free(assignment->id);
                     free_node((struct node*)assignment->value);
                     free(assignment);
-                    break;
-                }
-                case Node_Call: {
-                    struct call* call = (struct call*)node;
-                    free(call->id->name);
-                    free(call->id);
-                    if (call->args != NULL) {
-                        for (size_t i = 0; i < 1; i++) {
-                            free_node((struct node*)call->args[i]);
-                        }
-                        free(call->args);
-                    }
-                    free(call);
                     break;
                 }
                 case Node_Return: {
@@ -482,6 +496,21 @@ void print_node(struct node* node, int depth) {
                         }
                         break;
                     }
+                    case Node_Call: {
+                        struct call* call = (struct call*)node;
+                        print_indent(depth + 1);
+                        printf("call=%s args=%zu\n",
+                               call->id != NULL && call->id->name != NULL ? call->id->name : "<null>",
+                               call->arg_count);
+                        if (call->args != NULL) {
+                            for (size_t i = 0; i < call->arg_count; i++) {
+                                if (call->args[i] != NULL) {
+                                    print_node((struct node*)call->args[i], depth + 2);
+                                }
+                            }
+                        }
+                        break;
+                    }
                     case Node_Const: {
                         struct constant* constant = (struct constant*)node;
                         print_indent(depth + 1);
@@ -540,13 +569,6 @@ void print_node(struct node* node, int depth) {
                     if (assignment->value != NULL) {
                         print_expr_tree(assignment->value, depth + 1);
                     }
-                    break;
-                }
-                case Node_Call: {
-                    struct call* call = (struct call*)node;
-                    print_indent(depth);
-                    printf("Statement: call %s\n",
-                           call->id != NULL && call->id->name != NULL ? call->id->name : "<null>");
                     break;
                 }
                 case Node_Return: {

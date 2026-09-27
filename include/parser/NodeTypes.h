@@ -11,12 +11,12 @@ enum StatementNodes {
     Node_Var,
     Node_Return,
     Node_Assign,
-    Node_Call,
 };
 
 enum ExprNodes {
     Node_Binary_Op,
     Node_Unary_Op,
+    Node_Call,
     Node_Const,
 };
 
