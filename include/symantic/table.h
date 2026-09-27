@@ -14,6 +14,8 @@ struct symbol_var {
 struct scope {
     struct symbol_var** vars;
     int varc;
+    struct symbol_fun** funs;
+    int func;
 };
 
 struct symbol_fun
