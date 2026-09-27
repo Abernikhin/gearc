@@ -178,16 +178,16 @@ struct symbol_var* var_lookup(struct scope* scope, char* name) {
     return NULL;
 }
 
-struct symbol_fun* fun_lookup(struct scope* scope, char* name) {
-    if (name == NULL) {
+struct symbol_fun* fun_lookup(struct root* root, char* name) {
+    if (root == NULL || name == NULL) {
         return NULL;
     }
 
-    for (int i = 0; scope != NULL && i < scope->func; i++) {
-        if (scope->funs[i] != NULL &&
-            scope->funs[i]->name != NULL &&
-            strcmp(scope->funs[i]->name, name) == 0) {
-            return scope->funs[i];
+    for (int i = 0; i < root->func; i++) {
+        if (root->funs[i] != NULL &&
+            root->funs[i]->name != NULL &&
+            strcmp(root->funs[i]->name, name) == 0) {
+            return root->funs[i];
         }
     }
 

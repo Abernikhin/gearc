@@ -14,8 +14,6 @@ struct symbol_var {
 struct scope {
     struct symbol_var** vars;
     int varc;
-    struct symbol_fun** funs;
-    int func;
 };
 
 struct symbol_fun
@@ -44,6 +42,6 @@ void free_var(struct symbol_var*);
 void free_fun(struct symbol_fun*);
 
 struct symbol_var* var_lookup(struct scope*, char*);
-struct symbol_fun* fun_lookup(struct scope*, char*);
+struct symbol_fun* fun_lookup(struct root*, char*);
 
 #endif // _Table_
