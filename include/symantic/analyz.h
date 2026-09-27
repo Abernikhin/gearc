@@ -9,6 +9,6 @@ struct root* create_root();
 void print_root(struct root*);
 void free_root(struct root*);
 
-void analyz(struct node**);
+bool analyz(struct node**, int);
 
 #endif // _Analyz_

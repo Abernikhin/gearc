@@ -1,5 +1,7 @@
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "symantic/analyz.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,15 +19,33 @@ int main(int argc, char** argv) {
     }
 
     struct lexer* lexer = new_lexer(source);
+    if (lexer == NULL) {
+        free(source);
+        return 1;
+    }
+
     tokenize(lexer);
     struct parser* parser = new_parser(lexer->tokens, lexer);
-    parse(parser);
-    print_parser(parser);
+    if (parser == NULL) {
+        free_lexer(lexer);
+        free(source);
+        return 1;
+    }
+
+    bool success = parse(parser);
+    if (success && parser->node_count > INT_MAX) {
+        fprintf(stderr, "[error] too many top-level nodes for semantic analysis\n");
+        success = false;
+    }
+    if (success) {
+        success = analyz(parser->root, (int)parser->node_count);
+    }
+
     free_parser(parser);
     free_lexer(lexer);
     free(source);
 
-    return 0;
+    return success ? 0 : 1;
 }
 
 static char* read_file_contents(const char* file_path) {
