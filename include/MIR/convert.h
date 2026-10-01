@@ -12,6 +12,6 @@ struct converter {
 struct converter* create_converter();
 void print_MIR(struct converter*);
 void free_MIR(struct converter*);
-void convert(struct converter*, struct node**);
+void convert(struct converter*, struct node**, int);
 
 #endif // _Convert_

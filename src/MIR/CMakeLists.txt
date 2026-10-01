@@ -1,3 +1,4 @@
-add_library(lexer STATIC
+add_library(MIR STATIC
     repr.c
+    convert.c
 )

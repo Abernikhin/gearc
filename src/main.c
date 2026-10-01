@@ -1,6 +1,7 @@
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "symantic/analyz.h"
+#include "MIR/convert.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +40,17 @@ int main(int argc, char** argv) {
     }
     if (success) {
         success = analyz(parser->root, (int)parser->node_count);
+    }
+    if (success) {
+        struct converter* converter = create_converter();
+        if (converter == NULL) {
+            fprintf(stderr, "[error] could not allocate MIR converter\n");
+            success = false;
+        } else {
+            convert(converter, parser->root, (int)parser->node_count);
+            print_MIR(converter);
+            free_MIR(converter);
+        }
     }
 
     free_parser(parser);

@@ -2,6 +2,9 @@
 #ifndef _Repr_
 #define _Repr_
 
+#include <stddef.h>
+#include <stdbool.h>
+
 enum Instructions {
     Add,
     Sub,
@@ -9,6 +12,11 @@ enum Instructions {
     Div,
     New,
     Set,
+    Mov,
+    Arg,
+    Lod,
+    Push,
+    Pop,
     Call,
     Ret
 };
@@ -16,12 +24,13 @@ enum Instructions {
 struct inst {
     enum Instructions data;
     char** op;
+    size_t op_count;
 };
 
 struct inst* create_inst(enum Instructions);
 void print_inst(struct inst*);
 void free_inst(struct inst*);
-void append_op(struct inst*, char*);
+bool append_op(struct inst*, char*);
 
 struct def {
     char* name;
@@ -32,6 +41,6 @@ struct def {
 struct def* create_def(char*);
 void print_def(struct def*);
 void free_def(struct def*);
-void append_inst(struct def*, struct inst*);
+bool append_inst(struct def*, struct inst*);
 
 #endif // _Repr_
